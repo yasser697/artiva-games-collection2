@@ -24,7 +24,7 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Unpack ZIP if needed & Build Debug APK
+      - name: Unpack ZIP, fix Kotlin BOM & Build Debug APK
         run: |
           SETTINGS_FILE=$(find . -maxdepth 4 -name 'settings.gradle' | head -n 1)
           if [ -z "$SETTINGS_FILE" ]; then
@@ -36,13 +36,17 @@ jobs:
             fi
           fi
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "لم يتم العثور على settings.gradle ولا على ملف ZIP داخل المستودع!"
-            ls -la
+            echo "لم يتم العثور على settings.gradle ولا على ملف ZIP!"
             exit 1
           fi
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
-          echo "Building from: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
+          # حل تعارض kotlin-stdlib تلقائياً
+          if ! grep -q "kotlin-bom" "$PROJECT_DIR/app/build.gradle"; then
+            sed -i "/dependencies {/a \    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')" "$PROJECT_DIR/app/build.gradle"
+          fi
+
           cd "$PROJECT_DIR"
           gradle assembleDebug --no-daemon
 
