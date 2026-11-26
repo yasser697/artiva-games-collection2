@@ -24,15 +24,24 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Locate project and Build Debug APK
+      - name: Unpack ZIP if needed & Build Debug APK
         run: |
-          SETTINGS_FILE=$(find . -maxdepth 3 -name 'settings.gradle' | head -n 1)
+          SETTINGS_FILE=$(find . -maxdepth 4 -name 'settings.gradle' | head -n 1)
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "لم يتم العثور على ملف settings.gradle! تأكد من فك ضغط ملف الـ ZIP قبل الرفع."
+            ZIP_FILE=$(find . -maxdepth 2 -name '*.zip' | head -n 1)
+            if [ -n "$ZIP_FILE" ]; then
+              echo "Unzipping $ZIP_FILE ..."
+              unzip -q "$ZIP_FILE" -d _unpacked
+              SETTINGS_FILE=$(find _unpacked -maxdepth 4 -name 'settings.gradle' | head -n 1)
+            fi
+          fi
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "لم يتم العثور على settings.gradle ولا على ملف ZIP داخل المستودع!"
+            ls -la
             exit 1
           fi
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
-          echo "Found Gradle project at: $PROJECT_DIR"
+          echo "Building from: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
           cd "$PROJECT_DIR"
           gradle assembleDebug --no-daemon
